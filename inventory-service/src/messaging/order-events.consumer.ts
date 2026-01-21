@@ -20,9 +20,17 @@ export class OrderEventsConsumer {
     @Payload() data: OrderCreatedEvent,
     @Ctx() context: RmqContext,
   ): Promise<void> {
-    this.logger.log(
-      `Evento OrderCreated recibido: OrderId=${data.orderId}, CorrelationId=${data.correlationId}`,
-    );
+    // Validar que el payload no sea nulo o vacío
+    if (!data || !data.orderId) {
+      this.logger.warn('Mensaje recibido sin datos válidos o sin orderId');
+      // Hacer ACK para evitar reintento
+      const channel = context.getChannelRef();
+      const originalMsg = context.getMessage();
+      channel.ack(originalMsg);
+      return;
+    }
+
+    this.logger.log(`Evento OrderCreated recibido: OrderId=${data.orderId}`);
 
     try {
       // 1. Validar disponibilidad de stock
@@ -37,7 +45,7 @@ export class OrderEventsConsumer {
 
         const rejectedEvent = new StockRejectedEvent(
           data.orderId,
-          data.correlationId,
+          data.correlationId || data.orderId,
           validation.reason || 'Stock not available',
         );
 
@@ -49,7 +57,7 @@ export class OrderEventsConsumer {
 
         const reservedEvent = new StockReservedEvent(
           data.orderId,
-          data.correlationId,
+          data.correlationId || data.orderId,
           data.items,
         );
 
@@ -76,7 +84,7 @@ export class OrderEventsConsumer {
         error instanceof Error ? error.message : 'Unknown error';
       const rejectedEvent = new StockRejectedEvent(
         data.orderId,
-        data.correlationId,
+        data.correlationId || data.orderId,
         `Internal error: ${errorMessage}`,
       );
 

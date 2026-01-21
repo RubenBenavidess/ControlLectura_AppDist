@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: primary_db
+      POSTGRES_DB: order_db
     ports:
       - "5432:5432"
     volumes:
@@ -23,7 +23,7 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: secondary_db
+      POSTGRES_DB: inventory_db
     ports:
       - "5433:5432" # Puerto Host:Puerto Contenedor
     volumes:

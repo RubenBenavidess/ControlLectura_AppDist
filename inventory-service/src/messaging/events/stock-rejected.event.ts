@@ -3,13 +3,13 @@ export class StockRejectedEvent {
   orderId: string;
   correlationId: string;
   reason: string;
-  rejectedAt: string;
+  timestamp: number; // Changed from rejectedAt to timestamp to match Spring Boot OrderEvent
 
   constructor(orderId: string, correlationId: string, reason: string) {
-    this.eventType = 'StockRejected';
+    this.eventType = 'STOCK_REJECTED'; // Must match Spring Boot EventType enum value
     this.orderId = orderId;
     this.correlationId = correlationId;
     this.reason = reason;
-    this.rejectedAt = new Date().toISOString();
+    this.timestamp = Date.now(); // timestamp in milliseconds to match Spring Boot
   }
 }

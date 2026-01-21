@@ -1,39 +1,50 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
-  ClientProxy,
-  ClientProxyFactory,
-  Transport,
-} from '@nestjs/microservices';
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
+import * as amqp from 'amqplib';
 import { StockReservedEvent } from '../messaging/events/stock-reserved.event';
 import { StockRejectedEvent } from '../messaging/events/stock-rejected.event';
 
 @Injectable()
-export class RabbitMQService implements OnModuleInit {
+export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQService.name);
-  private client: ClientProxy;
+  private connection: amqp.Connection;
+  private channel: amqp.Channel;
 
-  constructor() {
-    // Crear el cliente de RabbitMQ para publicar eventos
-    this.client = ClientProxyFactory.create({
-      transport: Transport.RMQ,
-      options: {
-        urls: [process.env.RABBITMQ_URL || 'amqp://localhost:5672'],
-        queue: 'inventory_to_order_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
-    });
-  }
+  private readonly INVENTORY_RESPONSE_EXCHANGE = 'inventory.response.exchange';
+  private readonly STOCK_RESERVED_ROUTING_KEY = 'stock.reserved';
+  private readonly STOCK_REJECTED_ROUTING_KEY = 'stock.rejected';
 
   async onModuleInit() {
-    // Conectar el cliente al iniciar el módulo
-    await this.client.connect();
-    this.logger.log('RabbitMQ client conectado para publicación de eventos');
+    try {
+      const rmqUrl = process.env.RABBITMQ_URL || 'amqp://admin:admin@localhost:5672';
+      // Conectar a RabbitMQ
+      this.connection = await amqp.connect(rmqUrl);
+      this.channel = await this.connection.createChannel();
+
+      // Asegurar que el exchange existe (debe coincidir con la configuración de Spring Boot)
+      await this.channel.assertExchange(
+        this.INVENTORY_RESPONSE_EXCHANGE,
+        'topic',
+        {
+          durable: true,
+        },
+      );
+
+      this.logger.log('RabbitMQ client conectado para publicación de eventos');
+      this.logger.log(`Exchange: ${this.INVENTORY_RESPONSE_EXCHANGE}`);
+    } catch (error) {
+      this.logger.error('Error al conectar con RabbitMQ:', error);
+      throw error;
+    }
   }
 
   /**
-   * Publica un evento StockReserved
+   * Publica un evento StockReserved al exchange de respuesta
+   * Este evento será enrutado por RabbitMQ usando el routing key 'stock.reserved'
    */
   async publishStockReserved(event: StockReservedEvent): Promise<void> {
     try {
@@ -41,9 +52,33 @@ export class RabbitMQService implements OnModuleInit {
         `Publicando StockReserved: OrderId=${event.orderId}, CorrelationId=${event.correlationId}`,
       );
 
-      await this.client.emit('stock.reserved', event).toPromise();
+      // Convertir el evento a JSON
+      const message = JSON.stringify(event);
 
-      this.logger.log(`StockReserved publicado exitosamente para orden ${event.orderId}`);
+      // Publicar al exchange con el routing key apropiado
+      const published = this.channel.publish(
+        this.INVENTORY_RESPONSE_EXCHANGE,
+        this.STOCK_RESERVED_ROUTING_KEY,
+        Buffer.from(message),
+        {
+          persistent: true,
+          contentType: 'application/json',
+          // Headers que Spring Boot puede usar
+          headers: {
+            '__TypeId__': 'com.espe.gestion_productos.messagin.OrderEvent',
+          },
+        },
+      );
+
+      if (published) {
+        this.logger.log(
+          `StockReserved publicado exitosamente para orden ${event.orderId}`,
+        );
+      } else {
+        this.logger.warn(
+          `StockReserved no pudo ser publicado inmediatamente (buffer lleno) para orden ${event.orderId}`,
+        );
+      }
     } catch (error) {
       this.logger.error(`Error al publicar StockReserved:`, error);
       throw error;
@@ -51,7 +86,8 @@ export class RabbitMQService implements OnModuleInit {
   }
 
   /**
-   * Publica un evento StockRejected
+   * Publica un evento StockRejected al exchange de respuesta
+   * Este evento será enrutado por RabbitMQ usando el routing key 'stock.rejected'
    */
   async publishStockRejected(event: StockRejectedEvent): Promise<void> {
     try {
@@ -59,9 +95,33 @@ export class RabbitMQService implements OnModuleInit {
         `Publicando StockRejected: OrderId=${event.orderId}, CorrelationId=${event.correlationId}, Reason=${event.reason}`,
       );
 
-      await this.client.emit('stock.rejected', event).toPromise();
+      // Convertir el evento a JSON
+      const message = JSON.stringify(event);
 
-      this.logger.log(`StockRejected publicado exitosamente para orden ${event.orderId}`);
+      // Publicar al exchange con el routing key apropiado
+      const published = this.channel.publish(
+        this.INVENTORY_RESPONSE_EXCHANGE,
+        this.STOCK_REJECTED_ROUTING_KEY,
+        Buffer.from(message),
+        {
+          persistent: true,
+          contentType: 'application/json',
+          // Headers que Spring Boot puede usar
+          headers: {
+            '__TypeId__': 'com.espe.gestion_productos.messagin.OrderEvent',
+          },
+        },
+      );
+
+      if (published) {
+        this.logger.log(
+          `StockRejected publicado exitosamente para orden ${event.orderId}`,
+        );
+      } else {
+        this.logger.warn(
+          `StockRejected no pudo ser publicado inmediatamente (buffer lleno) para orden ${event.orderId}`,
+        );
+      }
     } catch (error) {
       this.logger.error(`Error al publicar StockRejected:`, error);
       throw error;
@@ -72,7 +132,16 @@ export class RabbitMQService implements OnModuleInit {
    * Cierra la conexión del cliente
    */
   async onModuleDestroy() {
-    await this.client.close();
-    this.logger.log('RabbitMQ client desconectado');
+    try {
+      if (this.channel) {
+        await this.channel.close();
+      }
+      if (this.connection) {
+        await this.connection.close();
+      }
+      this.logger.log('RabbitMQ client desconectado');
+    } catch (error) {
+      this.logger.error('Error al cerrar conexión RabbitMQ:', error);
+    }
   }
 }

@@ -7,7 +7,8 @@ import { OrderEventsConsumer } from '../messaging/order-events.consumer';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ProductStock])],
-  providers: [ProductStockService, RabbitMQService, OrderEventsConsumer],
+  controllers: [OrderEventsConsumer],
+  providers: [ProductStockService, RabbitMQService],
   exports: [ProductStockService, RabbitMQService],
 })
 export class RabbitmqModule {}

@@ -1,0 +1,33 @@
+{
+  "name": "controllectura_appdist",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RubenBenavidess/ControlLectura_AppDist.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/RubenBenavidess/ControlLectura_AppDist/issues"
+  },
+  "homepage": "https://github.com/RubenBenavidess/ControlLectura_AppDist#readme",
+  "dependencies": {
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/swagger": "^11.2.5",
+    "@nestjs/typeorm": "^11.0.0",
+    "amqp-connection-manager": "^5.0.0",
+    "amqplib": "^0.10.9",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "pg": "^8.17.2",
+    "swagger-ui-express": "^5.0.1",
+    "typeorm": "^0.3.28"
+  }
+}

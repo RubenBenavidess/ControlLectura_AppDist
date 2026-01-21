@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL en puerto 5432
+  db-primary:
+    image: postgres:15-alpine
+    container_name: postgres_primary
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: primary_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data_primary:/var/lib/postgresql/data
+
+  # 2. PostgreSQL en puerto 5433
+  db-secondary:
+    image: postgres:15-alpine
+    container_name: postgres_secondary
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: secondary_db
+    ports:
+      - "5433:5432" # Puerto Host:Puerto Contenedor
+    volumes:
+      - pg_data_secondary:/var/lib/postgresql/data
+
+  # 3. RabbitMQ con Management Plugin
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_server
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "5672:5672"   # Puerto para comunicación (AMQP)
+      - "15672:15672" # Puerto para la interfaz web (UI)
+
+volumes:
+  pg_data_primary:
+  pg_data_secondary:

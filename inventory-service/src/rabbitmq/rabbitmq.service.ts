@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { StockReservedEvent } from '../messaging/events/stock-reserved.event';
 import { StockRejectedEvent } from '../messaging/events/stock-rejected.event';
@@ -16,15 +21,18 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     try {
       const rmqUrl = process.env.RABBITMQ_URL || 'amqp://admin:admin@localhost:5672';
-      
       // Conectar a RabbitMQ
       this.connection = await amqp.connect(rmqUrl);
       this.channel = await this.connection.createChannel();
 
       // Asegurar que el exchange existe (debe coincidir con la configuración de Spring Boot)
-      await this.channel.assertExchange(this.INVENTORY_RESPONSE_EXCHANGE, 'topic', {
-        durable: true,
-      });
+      await this.channel.assertExchange(
+        this.INVENTORY_RESPONSE_EXCHANGE,
+        'topic',
+        {
+          durable: true,
+        },
+      );
 
       this.logger.log('RabbitMQ client conectado para publicación de eventos');
       this.logger.log(`Exchange: ${this.INVENTORY_RESPONSE_EXCHANGE}`);

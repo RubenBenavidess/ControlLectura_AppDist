@@ -14,7 +14,7 @@ import { ProductStock } from './products/entities/product-stock.entity';
       port: parseInt(process.env.DB_PORT || '5433', 10),
       username: process.env.DB_USERNAME || 'admin',
       password: process.env.DB_PASSWORD || 'password123',
-      database: process.env.DB_DATABASE || 'secondary_db',
+      database: process.env.DB_DATABASE || 'inventory_db',
       entities: [ProductStock],
       synchronize: process.env.NODE_ENV !== 'production', // Solo en desarrollo
       logging: process.env.NODE_ENV === 'development',

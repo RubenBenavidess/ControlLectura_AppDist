@@ -4,18 +4,18 @@ export class StockReservedEvent {
   eventType: string;
   orderId: string;
   correlationId: string;
-  reservedItems: OrderItemEvent[];
-  reservedAt: string;
+  items: OrderItemEvent[]; // Changed from reservedItems to items to match Spring Boot OrderEvent
+  timestamp: number; // Changed from reservedAt to timestamp to match Spring Boot OrderEvent
 
   constructor(
     orderId: string,
     correlationId: string,
-    reservedItems: OrderItemEvent[],
+    items: OrderItemEvent[],
   ) {
-    this.eventType = 'StockReserved';
+    this.eventType = 'STOCK_RESERVED'; // Must match Spring Boot EventType enum value
     this.orderId = orderId;
     this.correlationId = correlationId;
-    this.reservedItems = reservedItems;
-    this.reservedAt = new Date().toISOString();
+    this.items = items;
+    this.timestamp = Date.now(); // timestamp in milliseconds to match Spring Boot
   }
 }

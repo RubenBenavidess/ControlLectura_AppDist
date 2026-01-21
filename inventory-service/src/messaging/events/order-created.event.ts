@@ -1,22 +1,31 @@
 import { OrderItemEvent } from './order-item.event';
 
 export class OrderCreatedEvent {
-  eventType: string;
   orderId: string;
-  correlationId: string;
-  createdAt: string;
+  customerId: string;
+  eventType: string;
   items: OrderItemEvent[];
+  shippingAddressJson?: string;
+  timestamp?: number;
+  correlationId?: string;
+  createdAt?: string;
 
   constructor(
     orderId: string,
-    correlationId: string,
-    createdAt: string,
+    customerId: string,
     items: OrderItemEvent[],
+    correlationId?: string,
+    createdAt?: string,
+    shippingAddressJson?: string,
+    timestamp?: number,
   ) {
-    this.eventType = 'OrderCreated';
     this.orderId = orderId;
-    this.correlationId = correlationId;
-    this.createdAt = createdAt;
+    this.customerId = customerId;
+    this.eventType = 'ORDER_CREATED';
     this.items = items;
+    this.correlationId = correlationId || orderId;
+    this.createdAt = createdAt;
+    this.shippingAddressJson = shippingAddressJson;
+    this.timestamp = timestamp;
   }
 }

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # 1. PostgreSQL en puerto 5432
+  # 1. PostgreSQL en puerto 5432 (Order Service)
   db-primary:
     image: postgres:15-alpine
     container_name: postgres_primary
@@ -14,8 +14,13 @@ services:
       - "5432:5432"
     volumes:
       - pg_data_primary:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # 2. PostgreSQL en puerto 5433
+  # 2. PostgreSQL en puerto 5433 (Inventory Service)
   db-secondary:
     image: postgres:15-alpine
     container_name: postgres_secondary
@@ -28,6 +33,11 @@ services:
       - "5433:5432" # Puerto Host:Puerto Contenedor
     volumes:
       - pg_data_secondary:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d inventory_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # 3. RabbitMQ con Management Plugin
   rabbitmq:
@@ -40,6 +50,61 @@ services:
     ports:
       - "5672:5672"   # Puerto para comunicación (AMQP)
       - "15672:15672" # Puerto para la interfaz web (UI)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 4. Order Service (Spring Boot)
+  order-service:
+    build:
+      context: ./order_service
+      dockerfile: Dockerfile
+    container_name: order_service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-primary:5432/order_db
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password123
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin
+    depends_on:
+      db-primary:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 5. Inventory Service (NestJS)
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    container_name: inventory_service
+    restart: always
+    ports:
+      - "3000:3001"
+    environment:
+      NODE_ENV: development
+      DB_HOST: db-secondary
+      DB_PORT: 5432
+      DB_USERNAME: admin
+      DB_PASSWORD: password123
+      DB_DATABASE: inventory_db
+      RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: admin
+      RABBITMQ_PASSWORD: admin
+    depends_on:
+      db-secondary:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   pg_data_primary:
